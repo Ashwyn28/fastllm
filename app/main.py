@@ -37,7 +37,8 @@ class Messages:
     def get_last_message(self):
         return self.messages[-1]
 
-    def add_assistant_message(self, message):
+    def add_assistant_message(self, response):
+        message = response['choices'][0]['message']['content']
         self.messages.append({"role": "assistant", "content": message})
 
 
@@ -51,7 +52,7 @@ async def chat(q: str):
         model="gpt-3.5-turbo",
         messages=msgs.get_messages(),
     )
-    msgs.add_assistant_message(response['choices'][0]['message']['content'])
+    msgs.add_assistant_message(response)
     return {"response": response}
 
 @app.post("/train")
@@ -76,7 +77,7 @@ async def plan(q: str):
         model="gpt-3.5-turbo",
         messages=msgs.get_messages(),
     )
-    msgs.add_assistant_message(response['choices'][0]['message']['content'])
+    msgs.add_assistant_message(response)
     return {"response": response}
 
 
