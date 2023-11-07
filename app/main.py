@@ -22,6 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Utilities
+# -------------------------------
 
 class Messages:
     def __init__(self):
@@ -52,20 +54,45 @@ class PlannerMessages(Messages):
         self.add_system_message("You are a helpful planner.")
         self.add_system_message("You help me plan my day.")
 
+    def format_time(self, time: str):
+        # time format '07/11/2023 15:30:00'
+        try:
+            # Parse the date string with time into a datetime object
+            datetime_object = datetime.strptime(time, "%d/%m/%Y %H:%M:%S")
+
+            # If you want to convert it to ISO format including date and time
+            iso_datetime_string = datetime_object.isoformat()
+            print(f"The ISO format datetime is: {iso_datetime_string}")
+        except ValueError:
+            print(f"The datetime {time} is not in the correct format.")
+
+        return iso_datetime_string
+
+
     def make_activity(self, time: str, activity: str):
-        time = datetime.strptime(time, "%H:%M")
+        time = self.format_time(time)
         activity = activity.lower()
-        self.add_message({"role": "system", "content": f"Ok, I will {activity} at {time}."}) 
-    
+        self.add_message(
+            {
+                "role": "user",
+                "content": f"Ok, I will {activity} at {time}.",
+            }
+        )
+
     def make_routine(self, activities: list[str]):
-        self.add_message({"role": "system", "content": "Ok, I will do the following activities:"})
+        self.add_message(
+            {"role": "system", "content": "Ok, I will do the following activities:"}
+        )
         for activity in activities:
-            self.make_activity(activity["time"], activity["activity"])   
+            self.make_activity(activity["time"], activity["activity"])
 
 
 msgs = Messages()
 planner_msgs = PlannerMessages()
 
+# API
+# -----------------------------------------------------
+# _____________________________________________________
 
 @app.post("/chat")
 async def chat(q: str):
@@ -109,6 +136,12 @@ async def plan(q: str):
     )
     planner_msgs.add_assistant_message(response)
     return {"response": response}
+
+
+@app.post("/add/activity")
+async def activity(q: str, t: str):
+    planner_msgs.make_activity(activity=q, time=t)
+    return {"response": planner_msgs.get_messages()}
 
 
 # Image Generation
