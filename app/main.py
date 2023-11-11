@@ -1,5 +1,3 @@
-from typing import Union
-
 from core.settings import settings
 import openai
 from fastapi import FastAPI
@@ -8,7 +6,7 @@ app = FastAPI()
 openai.api_key = settings.OPENAI_API_KEY
 
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
+from datetime import datetime
 
 origins = [
     "http://localhost:5173",
@@ -34,6 +32,9 @@ class Messages:
     def add_message(self, message):
         self.messages.append(message)
 
+    def add_user_message(self, message):
+        self.add_message({"role": "user", "content": message})
+
     def add_system_message(self, message):
         self.add_message({"role": "system", "content": message})
 
@@ -53,14 +54,12 @@ class PlannerMessages(Messages):
         super().__init__()
         self.add_system_message("You are a helpful planner.")
         self.add_system_message("You help me plan my day.")
+        self.add_system_message("Ok, I will do the following activities:")
 
     def format_time(self, time: str):
         # time format '07/11/2023 15:30:00'
         try:
-            # Parse the date string with time into a datetime object
             datetime_object = datetime.strptime(time, "%d/%m/%Y %H:%M:%S")
-
-            # If you want to convert it to ISO format including date and time
             iso_datetime_string = datetime_object.isoformat()
             print(f"The ISO format datetime is: {iso_datetime_string}")
         except ValueError:
@@ -68,23 +67,16 @@ class PlannerMessages(Messages):
 
         return iso_datetime_string
 
-
-    def make_activity(self, time: str, activity: str):
+    def make_activity(self, activity: str, time: str):
         time = self.format_time(time)
         activity = activity.lower()
-        self.add_message(
-            {
-                "role": "user",
-                "content": f"Ok, I will {activity} at {time}.",
-            }
-        )
+        self.add_user_message(f"Ok, I will {activity} at {time}.")
 
-    def make_routine(self, activities: list[str]):
-        self.add_message(
-            {"role": "system", "content": "Ok, I will do the following activities:"}
-        )
-        for activity in activities:
-            self.make_activity(activity["time"], activity["activity"])
+    def get_daily_routine(self):
+        pass
+
+    def make_daily_routine(seld):
+        pass
 
 
 msgs = Messages()
@@ -93,6 +85,7 @@ planner_msgs = PlannerMessages()
 # API
 # -----------------------------------------------------
 # _____________________________________________________
+
 
 @app.post("/chat")
 async def chat(q: str):
@@ -109,13 +102,13 @@ async def chat(q: str):
 @app.post("/train")
 async def train(q: str):
     msgs.add_message({"role": "system", "content": q})
-
     return {"response": "ok"}
 
 
 @app.get("/show-input")
 def show_input():
     return {"messages": msgs.get_messages()}
+
 
 @app.get("/show-planner-input")
 def show_planner_input():
